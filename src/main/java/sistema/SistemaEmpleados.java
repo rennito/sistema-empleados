@@ -1,6 +1,7 @@
 package sistema;
 
 import java.io.*;  // Importa las clases necesarias para manejar archivos y flujos de entrada/salida
+import java.time.LocalDateTime;
 import java.util.*;  // Importa las clases necesarias para manejar listas, colecciones y escáner
 
 public class SistemaEmpleados {
@@ -67,24 +68,34 @@ public class SistemaEmpleados {
         }
     }
 
+    // Método para agregar un empleado
     private void agregarEmpleado() {
         try {
             System.out.print("Nombre completo: ");
-            String nombreCompleto = scanner.nextLine();
-            System.out.print("Puesto: ");
-            String puesto = scanner.nextLine();
-            System.out.print("Edad: ");
-            int edad = scanner.nextInt();
-            scanner.nextLine();  // Limpiar el buffer
-            System.out.print("Ciudad: ");
-            String ciudad = scanner.nextLine();
+            String nombreCompleto = scanner.nextLine();  // Lee el nombre completo del empleado
 
-            Empleado empleado = new Empleado(nombreCompleto, puesto, edad, ciudad);
-            empleados.add(empleado);
+            // Verifica si el nombre completo ya existe en la lista de empleados
+            for (Empleado empleado : empleados) {
+                if (empleado.getNombreCompleto().equalsIgnoreCase(nombreCompleto)) {
+                    System.out.println("El empleado con el nombre completo '" + nombreCompleto + "' ya está registrado.");
+                    return;  // Sale del método si el empleado ya existe
+                }
+            }
+
+            System.out.print("Puesto: ");
+            String puesto = scanner.nextLine();  // Lee el puesto del empleado
+            System.out.print("Edad: ");
+            int edad = scanner.nextInt();  // Lee la edad del empleado
+            scanner.nextLine();  // Limpia el buffer
+            System.out.print("Ciudad: ");
+            String ciudad = scanner.nextLine();  // Lee la ciudad del empleado
+
+            Empleado empleado = new Empleado(nombreCompleto, puesto, edad, ciudad);  // Crea una nueva instancia de Empleado
+            empleados.add(empleado);  // Añade el empleado a la lista
             System.out.println("Empleado agregado exitosamente.");
         } catch (InputMismatchException e) {
             System.out.println("Entrada inválida. Por favor, intente nuevamente.");
-            scanner.nextLine();  // Limpiar el buffer
+            scanner.nextLine();  // Limpia el buffer
         }
     }
 
@@ -105,14 +116,32 @@ public class SistemaEmpleados {
             System.out.print("Ingrese el número de empleado: ");
             int numeroEmpleado = scanner.nextInt();
             scanner.nextLine();  // Limpiar el buffer
-            boolean empleadoExiste = false;
 
+            boolean empleadoExiste = false;
+            boolean yaChequeadoHoy = false;
+
+            // Verificar si el empleado existe en la lista
             for (Empleado empleado : empleados) {
                 if (empleado.getNumeroEmpleado() == numeroEmpleado) {
-                    Asistencia asistencia = new Asistencia(numeroEmpleado);
-                    asistencias.add(asistencia);
-                    System.out.println("Checado registrado exitosamente para el empleado número " + numeroEmpleado);
                     empleadoExiste = true;
+
+                    // Verificar si el empleado ya ha registrado su asistencia hoy
+                    LocalDateTime inicioDelDia = LocalDateTime.now().toLocalDate().atStartOfDay();
+                    for (Asistencia asistencia : asistencias) {
+                        if (asistencia.getNumeroEmpleado() == numeroEmpleado &&
+                                asistencia.getFechaHora().toLocalDate().isEqual(inicioDelDia.toLocalDate())) {
+                            yaChequeadoHoy = true;
+                            break;
+                        }
+                    }
+
+                    if (yaChequeadoHoy) {
+                        System.out.println("El empleado número " + numeroEmpleado + " ya ha registrado su asistencia hoy.");
+                    } else {
+                        Asistencia asistencia = new Asistencia(numeroEmpleado);
+                        asistencias.add(asistencia);
+                        System.out.println("Checado registrado exitosamente para el empleado número " + numeroEmpleado);
+                    }
                     break;
                 }
             }
@@ -149,10 +178,11 @@ public class SistemaEmpleados {
     }
 
     private void cargarEmpleados() {
-        File archivo = new File(ARCHIVO_EMPLEADOS);// Crea un objeto File para el archivo de empleados
-        if (archivo.exists()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+        File archivoEmpleados = new File(ARCHIVO_EMPLEADOS);
+        if (archivoEmpleados.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(archivoEmpleados))) {
                 String linea;
+                int maxNumeroEmpleado = 0;
                 while ((linea = reader.readLine()) != null) {
                     String[] partes = linea.split(",");
                     int numeroEmpleado = Integer.parseInt(partes[0]);
@@ -162,16 +192,21 @@ public class SistemaEmpleados {
                     String ciudad = partes[4];
 
                     Empleado empleado = new Empleado(nombreCompleto, puesto, edad, ciudad);
-                    empleados.add(empleado);// Añade el empleado a la lista
-                    if (numeroEmpleado >= Empleado.getContador()) {
-                        Empleado.setContador(numeroEmpleado + 1);// Ajusta el contador si es necesario
+                    empleados.add(empleado);
+
+                    if (numeroEmpleado > maxNumeroEmpleado) {
+                        maxNumeroEmpleado = numeroEmpleado;
                     }
                 }
+                // Actualiza el contador con el valor más alto + 1
+                Empleado.setContador(maxNumeroEmpleado + 1);
+
             } catch (IOException e) {
                 System.out.println("Error al cargar los empleados: " + e.getMessage());
             }
         }
     }
+
 
     public static void main(String[] args) {
         SistemaEmpleados sistema = new SistemaEmpleados();
